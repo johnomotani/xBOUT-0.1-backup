@@ -4,6 +4,7 @@ from functools import partial
 from xarray import register_dataarray_accessor
 
 from .plotting.animate import animate_imshow, animate_line
+from .plotting import plotfuncs
 
 
 @register_dataarray_accessor('bout')
@@ -101,3 +102,7 @@ class BoutDataArrayAccessor:
                                       animate=animate, fps=fps,
                                       save_as=save_as, ax=ax, **kwargs)
             return line_block
+
+    # TODO BOUT-specific plotting functionality would be implemented as methods here, e.g. ds.bout.plot_poloidal
+    def contourf(self, ax=None, **kwargs):
+        return plotfuncs.contourf(self.data, ax=ax, **kwargs)
