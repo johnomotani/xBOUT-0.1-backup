@@ -106,3 +106,5 @@ class BoutDataArrayAccessor:
     # TODO BOUT-specific plotting functionality would be implemented as methods here, e.g. ds.bout.plot_poloidal
     def contourf(self, ax=None, **kwargs):
         return plotfuncs.contourf(self.data, ax=ax, **kwargs)
+    def regions(self, ax=None, **kwargs):
+        return plotfuncs.regions(self.data, ax=ax, **kwargs)
