@@ -1,6 +1,6 @@
 from pathlib import Path
-from pprint import pformat
-import configparser
+from pprint import pformat as prettyformat
+from functools import partial
 
 import animatplot as amp
 from matplotlib import pyplot as plt
@@ -104,15 +104,10 @@ class BoutDatasetAccessor:
     """
 
     def __init__(self, ds):
-
-        # # Load data variables
-        # # Should we just load whole dataset here?
-        # self.datapath = datapath
-        # self.prefix = prefix
-
         self.data = ds
-        self.metadata = ds.attrs['metadata']
-        self.options = ds.attrs['options']
+        self.metadata = ds.attrs.get('metadata')  # None if just grid file
+        self.options = ds.attrs.get('options')  # None if no inp file
+        self.grid = ds.attrs.get('grid')  # None if no grid file
 
     def __str__(self):
         """
@@ -120,13 +115,15 @@ class BoutDatasetAccessor:
 
         Accessed by print(ds.bout)
         """
+
+        styled = partial(prettyformat, indent=4, compact=True)
         text = "<xbout.BoutDataset>\n" + \
                "Contains:\n{}\n".format(str(self.data)) + \
-               "Metadata:\n{}\n".format(pformat(self.metadata,
-                                                indent=4, compact=True))
+               "Metadata:\n{}\n".format(styled(self.metadata))
         if self.options:
-            text += "Options:\n{}".format(pformat(self.options,
-                                                  indent=4, compact=True))
+            text += "Options:\n{}".format(styled(self.options))
+        if self.grid:
+            text += "Grid:\n{}".format(styled(self.grid))
         return text
 
     #def __repr__(self):
@@ -167,6 +164,7 @@ class BoutDatasetAccessor:
 
         # TODO How should I store other data? In the attributes dict?
         # TODO Convert Ben's options class to a (flattened) nested dictionary then store it in ds.attrs?
+        # TODO Save grid data too
         if self.options is None:
             to_save.attrs = {}
         else:

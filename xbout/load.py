@@ -8,6 +8,9 @@ from functools import partial
 
 from natsort import natsorted
 
+from .grid import open_grid
+from .utils import _set_attrs_on_all_vars, _separate_metadata, _check_filetype
+
 _BOUT_TIMING_VARIABLES = ['wall_time', 'wtime', 'wtime_rhs', 'wtime_invert',
                           'wtime_comms', 'wtime_io', 'wtime_per_rhs', 'wtime_per_rhs_e',
                           'wtime_per_rhs_i']
@@ -27,7 +30,7 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True, keep_guards=True):
                                preprocess=_preprocess, engine=filetype,
                                chunks=chunks)
 
-    ds, metadata = _strip_metadata(ds)
+    ds, metadata = _separate_metadata(ds)
 
     return ds, metadata
 
@@ -53,18 +56,6 @@ def _expand_filepaths(datapath):
         xarray.set_options(file_cache_maxsize=len(filepaths))
 
     return filepaths, filetype
-
-
-def _check_filetype(path):
-    if path.suffix == '.nc':
-        filetype = 'netcdf4'
-    elif path.suffix == '.h5netcdf':
-        filetype = 'h5netcdf'
-    else:
-        raise IOError("Do not know how to read file extension "
-                      "\"{path.suffix}\"")
-
-    return filetype
 
 
 def _expand_wildcards(path):
@@ -188,22 +179,3 @@ def _trim(ds, ghosts={}, keep_guards=True):
             trimmed_ds = trimmed_ds.drop(name)
 
     return trimmed_ds
-
-
-def _strip_metadata(ds):
-    """
-    Extract the metadata (nxpe, myg etc.) from the Dataset.
-
-    Assumes that all scalar variables are metadata, not physical data!
-    """
-
-    # Find only the scalar variables
-    variables = list(ds.variables)
-    scalar_vars = [var for var in variables
-                   if not any(dim in ['t', 'x', 'y', 'z'] for dim in ds[var].dims)]
-
-    # Save metadata as a dictionary
-    metadata_vals = [np.asscalar(ds[var].values) for var in scalar_vars]
-    metadata = dict(zip(scalar_vars, metadata_vals))
-
-    return ds.drop(scalar_vars), metadata

@@ -1,4 +1,9 @@
-from .boutdataset import open_boutdataset, BoutDatasetAccessor
+from .grid import open_grid
+
+from . import geometries
+from .geometries import register_geometry
+
+from .boutdataset import BoutDatasetAccessor, open_boutdataset
 from .boutdataarray import BoutDataArrayAccessor
 
 from .plotting.animate import animate_imshow
