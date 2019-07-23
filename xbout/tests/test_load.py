@@ -12,7 +12,7 @@ import xarray.testing as xrt
 from natsort import natsorted
 
 from xbout.load import _check_filetype, _expand_wildcards, _expand_filepaths,\
-    _arrange_for_concatenation, _trim, _strip_metadata, \
+    _arrange_for_concatenation, _trim, _separate_metadata, \
     _auto_open_mfboutdataset, _infer_contains_boundaries
 
 
@@ -284,12 +284,12 @@ METADATA_VARS = ['NXPE', 'NYPE', 'MXG', 'MYG', 'nx', 'MXSUB', 'MYSUB', 'MZ']
 
 
 class TestStripMetadata():
-    def test_strip_metadata(self):
+    def test_separate_metadata(self):
 
         original = create_bout_ds()
         assert original['NXPE'] == 1
 
-        ds, metadata = _strip_metadata(original)
+        ds, metadata = _separate_metadata(original)
 
         assert original.drop(METADATA_VARS).equals(ds)
         assert metadata['NXPE'] == 1

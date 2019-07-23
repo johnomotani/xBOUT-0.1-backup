@@ -2,7 +2,7 @@ from warnings import warn
 from pathlib import Path
 
 import numpy as np
-import xarray
+import xarray as xr
 
 from functools import partial
 
@@ -15,6 +15,94 @@ _BOUT_PER_PROC_VARIABLES = ['wall_time', 'wtime', 'wtime_rhs', 'wtime_invert',
                             'wtime_comms', 'wtime_io', 'wtime_per_rhs',
                             'wtime_per_rhs_e', 'wtime_per_rhs_i', 'PE_XIND', 'PE_YIND',
                             'MYPE']
+
+
+# This code should run whenever any function from this module is imported
+# Set all attrs to survive all mathematical operations
+# (see https://github.com/pydata/xarray/pull/2482)
+try:
+    xr.set_options(keep_attrs=True)
+except ValueError:
+    raise ImportError("For dataset attributes to be permanent you need to be "
+                      "using the development version of xarray - found at "
+                      "https://github.com/pydata/xarray/")
+try:
+    xr.set_options(file_cache_maxsize=256)
+except ValueError:
+    raise ImportError("For open and closing of netCDF files correctly you need"
+                      " to be using the development version of xarray - found"
+                      " at https://github.com/pydata/xarray/")
+
+
+# TODO somehow check that we have access to the latest version of auto_combine
+
+
+def open_boutdataset(datapath='./BOUT.dmp.*.nc',
+                     inputfilepath=None, gridfilepath=None, geometry=None, chunks={},
+                     keep_xboundaries=True, keep_yboundaries=False, run_name=None,
+                     info=True):
+    """
+    Load a dataset from a set of BOUT output files, including the input options file.
+
+    Parameters
+    ----------
+    datapath : str, optional
+    prefix : str, optional
+    slices : slice object, optional
+    chunks : dict, optional
+    inputfilepath : str, optional
+    gridfilepath : str, optional
+    keep_xboundaries : bool, optional
+        If true, keep x-direction boundary cells (the cells past the physical edges of the
+        grid, where boundary conditions are set); increases the size of the x dimension in
+        the returned data-set. If false, trim these cells.
+    keep_yboundaries : bool, optional
+        If true, keep y-direction boundary cells (the cells past the physical edges of the
+        grid, where boundary conditions are set); increases the size of the y dimension in
+        the returned data-set. If false, trim these cells.
+        Note: in double-null topology, setting this argument to True loads the boundary
+        cells at the second divertor, so the length of the y-dimension would be ny+4*MYG.
+    run_name : str, optional
+    info : bool, optional
+
+    Returns
+    -------
+    ds : xarray.Dataset
+    """
+
+    # TODO handle possibility that we are loading a previously saved (and trimmed) dataset
+
+    # Gather pointers to all numerical data from BOUT++ output files
+    ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks,
+                                            keep_xboundaries=keep_xboundaries,
+                                            keep_yboundaries=keep_yboundaries)
+
+    ds = _set_attrs_on_all_vars(ds, 'metadata', metadata)
+
+    if inputfilepath:
+        # Use Ben's options class to store all input file options
+        with open(inputfilepath, 'r') as f:
+            config_string = "[dummysection]\n" + f.read()
+        options = configparser.ConfigParser()
+        options.read_string(config_string)
+    else:
+        options = None
+    ds = _set_attrs_on_all_vars(ds, 'options', options)
+
+    if gridfilepath:
+        ds = open_grid(gridfilepath=gridfilepath, geometry=geometry, ds=ds)
+
+    # TODO read and store git commit hashes from output files
+
+    if run_name:
+        ds.name = run_name
+
+    if info is 'terse':
+        print("Read in dataset from {}".format(str(Path(datapath))))
+    elif info:
+        print("Read in:\n{}".format(ds.bout))
+
+    return ds
 
 
 def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
@@ -31,7 +119,7 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
                           nxpe=nxpe, nype=nype)
 
     # TODO warning message to make sure user knows if it's parallelized
-    ds = xarray.open_mfdataset(paths_grid, concat_dim=concat_dims,
+    ds = xr.open_mfdataset(paths_grid, concat_dim=concat_dims,
                                combine='nested', data_vars='minimal',
                                preprocess=_preprocess, engine=filetype,
                                chunks=chunks)
@@ -59,7 +147,7 @@ def _expand_filepaths(datapath):
              "Recommend using `xr.set_options(file_cache_maxsize=NUM)`"
              " to explicitly set this to a large enough value."
              .format(str(len(filepaths))), UserWarning)
-        xarray.set_options(file_cache_maxsize=len(filepaths))
+        xr.set_options(file_cache_maxsize=len(filepaths))
 
     return filepaths, filetype
 
@@ -83,7 +171,7 @@ def _expand_wildcards(path):
 
 
 def _read_splitting(filepath, info=True):
-    ds = xarray.open_dataset(str(filepath))
+    ds = xr.open_dataset(str(filepath))
 
     # Account for case of no parallelisation, when nxpe etc won't be in dataset
     def get_scalar(ds, key, default=1, info=True):
@@ -201,13 +289,13 @@ def _trim(ds, *, guards, keep_boundaries, nxpe, nype):
 
     trimmed_ds = trimmed_ds.drop(_BOUT_PER_PROC_VARIABLES, errors='ignore')
 
-    return trimmed_ds
-
     # Ignore FieldPerps for now
     for name in trimmed_ds:
         if (trimmed_ds[name].dims == ('x', 'z')
                 or trimmed_ds[name].dims == ('t', 'x', 'z')):
             trimmed_ds = trimmed_ds.drop(name)
+
+    return trimmed_ds
 
 
 def _infer_contains_boundaries(ds, nxpe, nype):
@@ -250,5 +338,3 @@ def _infer_contains_boundaries(ds, nxpe, nype):
             lower_boundaries['y'] = True
 
     return lower_boundaries, upper_boundaries
-
-    return ds.drop(scalar_vars), metadata

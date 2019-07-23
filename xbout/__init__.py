@@ -1,9 +1,10 @@
 from .grid import open_grid
 
 from . import geometries
-from .geometries import register_geometry
+from .geometries import register_geometry, REGISTERED_GEOMETRIES
 
-from .boutdataset import BoutDatasetAccessor, open_boutdataset
+from .boutdataset import BoutDatasetAccessor
+from .load import open_boutdataset
 from .boutdataarray import BoutDataArrayAccessor
 
 from .plotting.animate import animate_imshow
