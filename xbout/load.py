@@ -10,6 +10,11 @@ from natsort import natsorted
 from .grid import open_grid
 from .utils import _set_attrs_on_all_vars, _separate_metadata, _check_filetype
 
+_BOUT_PER_PROC_VARIABLES = ['wall_time', 'wtime', 'wtime_rhs', 'wtime_invert',
+                            'wtime_comms', 'wtime_io', 'wtime_per_rhs',
+                            'wtime_per_rhs_e', 'wtime_per_rhs_i', 'PE_XIND', 'PE_YIND',
+                            'MYPE']
+
 
 # This code should run whenever any function from this module is imported
 # Set all attrs to survive all mathematical operations
@@ -31,10 +36,10 @@ except ValueError:
 # TODO somehow check that we have access to the latest version of auto_combine
 
 
-def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
-                     inputfilepath=None,
-                     gridfilepath=None, geometry=None,
-                     run_name=None, info=True):
+def open_boutdataset(datapath='./BOUT.dmp.*.nc',
+                     inputfilepath=None, gridfilepath=None, geometry=None, chunks={},
+                     keep_xboundaries=True, keep_yboundaries=False, run_name=None,
+                     info=True):
     """
     Load a dataset from a set of BOUT output files, including the input options file.
 
@@ -46,6 +51,16 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
     chunks : dict, optional
     inputfilepath : str, optional
     gridfilepath : str, optional
+    keep_xboundaries : bool, optional
+        If true, keep x-direction boundary cells (the cells past the physical edges of the
+        grid, where boundary conditions are set); increases the size of the x dimension in
+        the returned data-set. If false, trim these cells.
+    keep_yboundaries : bool, optional
+        If true, keep y-direction boundary cells (the cells past the physical edges of the
+        grid, where boundary conditions are set); increases the size of the y dimension in
+        the returned data-set. If false, trim these cells.
+        Note: in double-null topology, setting this argument to True loads the boundary
+        cells at the second divertor, so the length of the y-dimension would be ny+4*MYG.
     run_name : str, optional
     info : bool, optional
 
@@ -57,7 +72,10 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
     # TODO handle possibility that we are loading a previously saved (and trimmed) dataset
 
     # Gather pointers to all numerical data from BOUT++ output files
-    ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks)
+    ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks,
+                                            keep_xboundaries=keep_xboundaries,
+                                            keep_yboundaries=keep_yboundaries)
+
     ds = _set_attrs_on_all_vars(ds, 'metadata', metadata)
 
     if inputfilepath:
@@ -86,7 +104,8 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', chunks={},
     return ds
 
 
-def _auto_open_mfboutdataset(datapath, chunks={}, info=True, keep_guards=True):
+def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
+                             keep_xboundaries=False, keep_yboundaries=False):
     filepaths, filetype = _expand_filepaths(datapath)
 
     # Open just one file to read processor splitting
@@ -94,12 +113,15 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True, keep_guards=True):
 
     paths_grid, concat_dims = _arrange_for_concatenation(filepaths, nxpe, nype)
 
-    _preprocess = partial(_trim, ghosts={'x': mxg, 'y': myg})
+    _preprocess = partial(_trim, guards={'x': mxg, 'y': myg},
+                          keep_boundaries={'x': keep_xboundaries, 'y': keep_yboundaries},
+                          nxpe=nxpe, nype=nype)
 
-    ds = xr.open_mfdataset(paths_grid, concat_dims=concat_dims,
-                           data_vars='minimal', preprocess=_preprocess,
-                           engine=filetype, chunks=chunks,
-                           infer_order_from_coords=False)
+    # TODO warning message to make sure user knows if it's parallelized
+    ds = xr.open_mfdataset(paths_grid, concat_dim=concat_dims,
+                               combine='nested', data_vars='minimal',
+                               preprocess=_preprocess, engine=filetype,
+                               chunks=chunks)
 
     ds, metadata = _separate_metadata(ds)
 
@@ -150,8 +172,6 @@ def _expand_wildcards(path):
 def _read_splitting(filepath, info=True):
     ds = xr.open_dataset(str(filepath))
 
-    # TODO check that BOUT doesn't ever set the number of guards to be different to the number of ghosts
-
     # Account for case of no parallelisation, when nxpe etc won't be in dataset
     def get_scalar(ds, key, default=1, info=True):
         if key in ds:
@@ -180,9 +200,9 @@ def _arrange_for_concatenation(filepaths, nxpe=1, nype=1):
     ordering across different processors and consecutive simulation runs.
 
     Filepaths must be a sorted list. Uses the fact that BOUT's output files are
-    named as num = nxpe*i + j, and assumes that any consectutive simulation
-    runs are in directories which when sorted are in the correct order
-    (e.g. /run0/*, /run1/*,  ...).
+    named as num = nxpe*i + j, where i={0, ..., nype}, j={0, ..., nxpe}.
+    Also assumes that any consecutive simulation runs are in directories which
+    when sorted are in the correct order (e.g. /run0/*, /run1/*, ...).
     """
 
     nprocs = nxpe * nype
@@ -216,26 +236,98 @@ def _arrange_for_concatenation(filepaths, nxpe=1, nype=1):
     return paths_grid, concat_dims
 
 
-def _trim(ds, ghosts={}, keep_guards=True):
+def _trim(ds, *, guards, keep_boundaries, nxpe, nype):
     """
-    Trims all ghost and guard cells off a single dataset read from a single
-    BOUT dump file, to prepare for concatenation.
+    Trims all guard (and optionally boundary) cells off a single dataset read from a
+    single BOUT dump file, to prepare for concatenation.
+    Also drops some variables that store timing information, which are different for each
+    process and so cannot be concatenated.
 
     Parameters
     ----------
-    ghosts : dict, optional
-    guards : dict, optional
-    keep_guards : dict, optional
+    guards : dict
+        Number of guard cells along each dimension, e.g. {'x': 2, 't': 0}
+    keep_boundaries : dict
+        Whether or not to preserve the boundary cells along each dimension, e.g.
+        {'x': True, 'y': False}
     """
 
-    # TODO generalise this function to handle guard cells being optional
-    if not keep_guards:
-        raise NotImplementedError
+    if any(keep_boundaries.values()):
+        # Work out if this particular dataset contains any boundary cells
+        # Relies on a change to xarray so datasets always have source encoding
+        # See xarray GH issue #2550
+        lower_boundaries, upper_boundaries = _infer_contains_boundaries(
+            ds, nxpe, nype)
+    else:
+        lower_boundaries, upper_boundaries = {}, {}
 
     selection = {}
     for dim in ds.dims:
-        if ghosts.get(dim, False):
-            selection[dim] = slice(ghosts[dim], -ghosts[dim])
+        # Check for boundary cells, otherwise use guard cells, else leave alone
+        if keep_boundaries.get(dim, False):
+            if lower_boundaries.get(dim, False):
+                lower = None
+            else:
+                lower = guards[dim]
+        elif guards.get(dim, False):
+            lower = guards[dim]
+        else:
+            lower = None
+        if keep_boundaries.get(dim, False):
+            if upper_boundaries.get(dim, False):
+                upper = None
+            else:
+                upper = -guards[dim]
+        elif guards.get(dim, False):
+            upper = -guards[dim]
+        else:
+            upper = None
+        selection[dim] = slice(lower, upper)
 
     trimmed_ds = ds.isel(**selection)
+
+    trimmed_ds = trimmed_ds.drop(_BOUT_PER_PROC_VARIABLES, errors='ignore')
+
     return trimmed_ds
+
+
+def _infer_contains_boundaries(ds, nxpe, nype):
+    """
+    Uses the processor indices and BOUT++'s topology indices to work out whether this
+    dataset contains boundary cells, and on which side.
+    """
+
+    try:
+        xproc = int(ds['PE_XIND'])
+        yproc = int(ds['PE_YIND'])
+    except KeyError:
+        # output file from BOUT++ earlier than 4.3
+        # Use knowledge that BOUT names its output files as /folder/prefix.num.nc, with a
+        # numbering scheme
+        # num = nxpe*i + j, where i={0, ..., nype}, j={0, ..., nxpe}
+        filename = ds.encoding['source']
+        *prefix, filenum, extension = Path(filename).suffixes
+        filenum = int(filenum.replace('.', ''))
+        xproc = filenum % nxpe
+        yproc = filenum // nxpe
+
+    lower_boundaries, upper_boundaries = {}, {}
+
+    lower_boundaries['x'] = xproc == 0
+    upper_boundaries['x'] = xproc == nxpe-1
+
+    lower_boundaries['y'] = yproc == 0
+    upper_boundaries['y'] = yproc == nype-1
+
+    jyseps2_1 = int(ds['jyseps2_1'])
+    jyseps1_2 = int(ds['jyseps1_2'])
+    if jyseps1_2 > jyseps2_1:
+        # second divertor present
+        ny_inner = int(ds['ny_inner'])
+        mysub = int(ds['MYSUB'])
+        if mysub*(yproc + 1) == ny_inner:
+            upper_boundaries['y'] = True
+        elif mysub*yproc == ny_inner:
+            lower_boundaries['y'] = True
+
+    return lower_boundaries, upper_boundaries

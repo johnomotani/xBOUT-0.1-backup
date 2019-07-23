@@ -6,6 +6,16 @@ from xarray import register_dataset_accessor, save_mfdataset, merge
 from dask.diagnostics import ProgressBar
 
 
+from .load import _auto_open_mfboutdataset
+
+
+def _set_attrs_on_all_vars(ds, key, attr_data):
+    ds.attrs[key] = attr_data
+    for da in ds.values():
+        da.attrs[key] = attr_data
+    return ds
+
+
 @register_dataset_accessor('bout')
 class BoutDatasetAccessor:
     """
@@ -145,7 +155,7 @@ class BoutDatasetAccessor:
             else:
                 nxpe, nype = self.metadata['NXPE'], self.metadata['NYPE']
 
-        # Is this even possible without saving the ghost cells?
+        # Is this even possible without saving the guard cells?
         # Can they be recreated?
         restart_datasets, paths = _split_into_restarts(self.data, savepath,
                                                        nxpe, nype)
