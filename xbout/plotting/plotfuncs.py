@@ -93,9 +93,9 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
         fig, ax = plt.subplots()
 
     if vmin is None:
-        vmin = da.min()
+        vmin = da.min().values
     if vmax is None:
-        vmax = da.max()
+        vmax = da.max().values
 
     if method is xr.plot.contour or method is xr.plot.contourf:
         levels = kwargs.get('levels', 7)
