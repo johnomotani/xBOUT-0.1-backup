@@ -55,7 +55,7 @@ def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False):
     if ds is None:
         ds = grid
     else:
-        ds = xr.merge(ds, grid)
+        ds = xr.merge((ds, grid))
     ds = _set_attrs_on_all_vars(ds, 'grid', grid_metadata)
 
     if geometry is None:
