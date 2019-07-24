@@ -44,7 +44,7 @@ def open_grid(gridfilepath='./grid.nc', geometry=None, ds=None, quiet=False):
     # TODO find out what 'yup_xsplit' etc are in the doublenull storm file John gave me
     # For now drop any variables with extra dimensions
     acceptable_dims = ['t', 'x', 'y', 'z']
-    unrecognised_dims = [set(grid.dims) - set(acceptable_dims)]
+    unrecognised_dims = set(grid.dims) - set(acceptable_dims)
     if len(unrecognised_dims) > 0:
         warn("Will drop all variables containing the dimensions {} because"
              "they are not recognised".format(unrecognised_dims))
