@@ -96,6 +96,7 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
     ds = _set_attrs_on_all_vars(ds, 'options', options)
 
     if gridfilepath:
+        # probably need to pass keep_xboundaries and keep_yboundaries here
         ds = open_grid(gridfilepath=gridfilepath, geometry=geometry,
                        coordinates=coordinates, ds=ds)
 
