@@ -90,7 +90,7 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
     aspect = height / width
 
     if ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(num=da.name)
 
     if vmin is None:
         vmin = da.min().values
