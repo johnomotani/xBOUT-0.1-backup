@@ -90,7 +90,7 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
     aspect = height / width
 
     if ax is None:
-        fig, ax = plt.subplots(num=da.name)
+        fig, ax = plt.subplots()
 
     if vmin is None:
         vmin = da.min().values
@@ -143,6 +143,8 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
             artist = method(region, x=x, y=y, ax=ax, add_colorbar=False, add_labels=False,
                             cmap=cmap, **kwargs, **region_kwargs)
             artists.append(artist)
+
+    ax.set_title(da.name)
 
     if separatrix:
         plot_separatrices(da, ax)
