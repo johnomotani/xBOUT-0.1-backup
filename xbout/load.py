@@ -114,6 +114,7 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
     return ds
 
 
+
 def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
                              keep_xboundaries=False, keep_yboundaries=False):
     filepaths, filetype = _expand_filepaths(datapath)
@@ -262,6 +263,10 @@ def _trim(ds, *, guards, keep_boundaries, nxpe, nype):
     keep_boundaries : dict
         Whether or not to preserve the boundary cells along each dimension, e.g.
         {'x': True, 'y': False}
+    nxpe : int
+        Number of processors in x direction
+    nype : int
+        Number of processors in y direction
     """
 
     if any(keep_boundaries.values()):
