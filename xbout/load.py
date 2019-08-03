@@ -40,7 +40,8 @@ except ValueError:
 def open_boutdataset(datapath='./BOUT.dmp.*.nc',
                      inputfilepath=None, gridfilepath=None, geometry=None,
                      coordinates=None, chunks={}, keep_xboundaries=True,
-                     keep_yboundaries=False, run_name=None, info=True):
+                     keep_yboundaries=False, run_name=None, info=True,
+                     drop_variables=None):
     """
     Load a dataset from a set of BOUT output files, including the input options file.
 
@@ -79,7 +80,8 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
     # Gather pointers to all numerical data from BOUT++ output files
     ds, metadata = _auto_open_mfboutdataset(datapath=datapath, chunks=chunks,
                                             keep_xboundaries=keep_xboundaries,
-                                            keep_yboundaries=keep_yboundaries)
+                                            keep_yboundaries=keep_yboundaries,
+                                            drop_variables=drop_variables)
 
     ds = _set_attrs_on_all_vars(ds, 'metadata', metadata)
 
@@ -113,7 +115,8 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
 
 
 def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
-                             keep_xboundaries=False, keep_yboundaries=False):
+                             keep_xboundaries=False, keep_yboundaries=False,
+                             drop_variables=None):
     filepaths, filetype = _expand_filepaths(datapath)
 
     # Open just one file to read processor splitting
@@ -123,7 +126,7 @@ def _auto_open_mfboutdataset(datapath, chunks={}, info=True,
 
     _preprocess = partial(_trim, guards={'x': mxg, 'y': myg},
                           keep_boundaries={'x': keep_xboundaries, 'y': keep_yboundaries},
-                          nxpe=nxpe, nype=nype)
+                          nxpe=nxpe, nype=nype, drop_variables=drop_variables)
 
     ds = xr.open_mfdataset(paths_grid, concat_dim=concat_dims, combine='nested',
                            data_vars='minimal', preprocess=_preprocess, engine=filetype,
@@ -276,7 +279,7 @@ def _arrange_for_concatenation(filepaths, nxpe=1, nype=1):
     return paths_grid, concat_dims
 
 
-def _trim(ds, *, guards, keep_boundaries, nxpe, nype):
+def _trim(ds, *, guards, keep_boundaries, nxpe, nype, drop_variables):
     """
     Trims all guard (and optionally boundary) cells off a single dataset read from a
     single BOUT dump file, to prepare for concatenation.
@@ -314,6 +317,9 @@ def _trim(ds, *, guards, keep_boundaries, nxpe, nype):
         selection[dim] = slice(lower, upper)
     trimmed_ds = ds.isel(**selection)
 
+
+    if drop_variables is not None:
+        trimmed_ds = trimmed_ds.drop(drop_variables, errors='ignore')
     # Ignore FieldPerps for now
     for name in trimmed_ds:
         if (trimmed_ds[name].dims == ('x', 'z')
