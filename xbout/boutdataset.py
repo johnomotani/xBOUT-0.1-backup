@@ -7,7 +7,7 @@ import numpy as np
 from xarray import register_dataset_accessor, save_mfdataset, set_options, merge
 from dask.diagnostics import ProgressBar
 
-from .plotting.animate import animate_pcolormesh, animate_line
+from .plotting.animate import animate_poloidal, animate_pcolormesh, animate_line
 @register_dataset_accessor('bout')
 class BoutDatasetAccessor:
     """
