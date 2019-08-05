@@ -9,7 +9,7 @@ from xarray import register_dataset_accessor, \
 from dask.diagnostics import ProgressBar
 
 from .load import _auto_open_mfboutdataset
-from .plotting.animate import animate_imshow, animate_line
+from .plotting.animate import animate_pcolormesh, animate_line
 
 
 def _set_attrs_on_all_vars(ds, key, attr_data):
@@ -200,10 +200,11 @@ class BoutDatasetAccessor:
 
             if ndims == 2:
                 blocks.append(animate_line(data=data, ax=ax, animate_over=animate_over,
-                              animate=False, **kwargs))
+                                           animate=False, **kwargs))
             elif ndims == 3:
-                blocks.append(animate_imshow(data=data, ax=ax, animate_over=animate_over,
-                              animate=False, **kwargs))
+                blocks.append(animate_pcolormesh(data=data, ax=ax,
+                                                 animate_over=animate_over,
+                                                 animate=False, **kwargs))
             else:
                 raise ValueError("Unsupported number of dimensions "
                                  + str(ndims) + ". Dims are " + str(v.dims))
