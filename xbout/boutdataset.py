@@ -9,7 +9,7 @@ from xarray import register_dataset_accessor, \
 from dask.diagnostics import ProgressBar
 
 from .load import _auto_open_mfboutdataset
-from .plotting.animate import animate_pcolormesh, animate_line
+from .plotting.animate import animate_poloidal, animate_pcolormesh, animate_line
 
 
 def _set_attrs_on_all_vars(ds, key, attr_data):
