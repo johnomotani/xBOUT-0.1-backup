@@ -4,15 +4,15 @@ import matplotlib.pyplot as plt
 import animatplot as amp
 
 
-def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
+def animate_pcolormesh(data, animate_over='t', x=None, y=None, animate=True,
                    vmin=None, vmax=None, vsymmetric=False, fps=10, save_as=None,
                    ax=None, **kwargs):
     """
     Plots a color plot which is animated with time over the specified
     coordinate.
 
-    Currently only supports 2D+1 data, which it plots with xarray's
-    wrapping of matplotlib's imshow.
+    Currently only supports 2D+1 data, which it plots with animatplotlib's
+    wrapping of matplotlib's pcolormesh.
 
     Parameters
     ----------
@@ -61,8 +61,7 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
             spatial_dims.remove(x)
             y = spatial_dims[0]
 
-        # Use (y, x) here so we transpose by default for imshow
-        data = data.transpose(animate_over, y, x)
+        data = data.transpose(animate_over, x, y)
     except ValueError:
         raise ValueError("Dimensions {} or {} are not present in the data"
                          .format(x, y))
@@ -84,14 +83,14 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
     if not ax:
         fig, ax = plt.subplots()
 
-    imshow_block = amp.blocks.Imshow(image_data, vmin=vmin, vmax=vmax,
-                                     ax=ax, origin='lower', **kwargs)
+    pcolormesh_block = amp.blocks.Pcolormesh(image_data, vmin=vmin, vmax=vmax, ax=ax,
+                                             **kwargs)
 
     if animate:
         timeline = amp.Timeline(np.arange(data.sizes[animate_over]), fps=fps)
-        anim = amp.Animation([imshow_block], timeline)
+        anim = amp.Animation([pcolormesh_block], timeline)
 
-    cbar = plt.colorbar(imshow_block.im, ax=ax)
+    cbar = plt.colorbar(pcolormesh_block.im, ax=ax)
     cbar.ax.set_ylabel(variable)
 
     # Add title and axis labels
@@ -110,7 +109,7 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
         # see https://github.com/t-makaro/animatplot/issues/24
         anim.save(save_as + '.gif', writer='imagemagick')
 
-    return imshow_block
+    return pcolormesh_block
 
 
 def animate_line(data, animate_over='t', animate=True,
