@@ -207,6 +207,10 @@ class BoutDatasetAccessor:
         if subplots_adjust is not None:
             fig.subplots_adjust(**subplots_adjust)
 
+        from timeit import default_timer as timer
+        starttime = timer()
+        oldt = starttime
+        print('creating blocks', flush=True, end=' ')
         blocks = []
         for v, ax in zip(variables, axes.flatten()):
 
@@ -235,16 +239,48 @@ class BoutDatasetAccessor:
                 raise ValueError("Unsupported number of dimensions "
                                  + str(ndims) + ". Dims are " + str(v.dims))
 
+        newt = timer()
+        print(newt - oldt,'s')
+        oldt = newt
+
+        print('making timeline', flush=True, end=' ')
         timeline = amp.Timeline(np.arange(v.sizes[animate_over]), fps=fps)
+
+        newt = timer()
+        print(newt - oldt,'s')
+        oldt = newt
+
+        print('making animation', flush=True, end=' ')
         anim = amp.Animation(blocks, timeline)
+
+        newt = timer()
+        print(newt - oldt,'s')
+        oldt = newt
+
+        print('making controls', flush=True, end=' ')
         anim.controls(timeline_slider_args={'text': animate_over})
 
+        newt = timer()
+        print(newt - oldt,'s')
+        oldt = newt
+
         if save_as is not None:
+            print('saving as gif', flush=True, end=' ')
             anim.save(save_as + '.gif', writer='imagemagick')
 
+            newt = timer()
+            print(newt - oldt,'s')
+            oldt = newt
+
         if show:
+            print('showing plot', flush=True, end=' ')
             plt.show()
 
+            newt = timer()
+            print(newt - oldt,'s')
+            oldt = newt
+
+        print('Done! Took ', newt - starttime, flush=True)
         return anim
 
 
