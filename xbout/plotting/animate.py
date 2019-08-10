@@ -5,7 +5,7 @@ import animatplot as amp
 
 
 def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
-                   vmin='min', vmax='max', fps=10, save_as=None,
+                   vmin=None, vmax=None, vsymmetric=False, fps=10, save_as=None,
                    ax=None, **kwargs):
     """
     Plots a color plot which is animated with time over the specified
@@ -76,10 +76,13 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
     image_data = data.values
 
     # If not specified, determine max and min values across entire data series
-    if vmax is 'max':
+    if vmax is None:
         vmax = np.max(image_data)
-    if vmin is 'min':
+    if vmin is None:
         vmin = np.min(image_data)
+    if vsymmetric:
+        vmax = max(np.abs(vmin), np.abs(vmax))
+        vmin = -vmax
 
     if not ax:
         fig, ax = plt.subplots()
@@ -87,16 +90,15 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
     imshow_block = amp.blocks.Imshow(image_data, vmin=vmin, vmax=vmax,
                                      ax=ax, origin='lower', **kwargs)
 
-    timeline = amp.Timeline(np.arange(data.sizes[animate_over]), fps=fps)
-
     if animate:
+        timeline = amp.Timeline(np.arange(data.sizes[animate_over]), fps=fps)
         anim = amp.Animation([imshow_block], timeline)
 
     cbar = plt.colorbar(imshow_block.im, ax=ax)
     cbar.ax.set_ylabel(variable)
 
     # Add title and axis labels
-    ax.set_title("{} variation over {}".format(variable, animate_over))
+    ax.set_title(variable)
     ax.set_xlabel(x)
     ax.set_ylabel(y)
 
@@ -115,7 +117,7 @@ def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
 
 
 def animate_line(data, animate_over='t', animate=True,
-                 vmin='min', vmax='max', fps=10, save_as=None, sep_pos=None, ax=None,
+                 vmin=None, vmax=None, fps=10, save_as=None, sep_pos=None, ax=None,
                  **kwargs):
     """
     Plots a line plot which is animated with time.
@@ -160,9 +162,9 @@ def animate_line(data, animate_over='t', animate=True,
     image_data = data.values
 
     # If not specified, determine max and min values across entire data series
-    if vmax is 'max':
+    if vmax is None:
         vmax = np.max(image_data)
-    if vmin is 'min':
+    if vmin is None:
         vmin = np.min(image_data)
 
     if not ax:
@@ -173,13 +175,12 @@ def animate_line(data, animate_over='t', animate=True,
 
     line_block = amp.blocks.Line(image_data, ax=ax, **kwargs)
 
-    timeline = amp.Timeline(np.arange(data.sizes[animate_over]), fps=fps)
-
     if animate:
+        timeline = amp.Timeline(np.arange(data.sizes[animate_over]), fps=fps)
         anim = amp.Animation([line_block], timeline)
 
     # Add title and axis labels
-    ax.set_title("{} variation over {}".format(variable, animate_over))
+    ax.set_title(variable)
     ax.set_xlabel(x_read)
     ax.set_ylabel(variable)
 
