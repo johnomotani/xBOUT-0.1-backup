@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import animatplot as amp
 
 
-def animate_imshow(data, animate_over='t', x='x', y='y', animate=True,
+def animate_imshow(data, animate_over='t', x=None, y=None, animate=True,
                    vmin='min', vmax='max', fps=10, save_as=None,
                    ax=None, **kwargs):
     """
@@ -20,9 +20,11 @@ def animate_imshow(data, animate_over='t', x='x', y='y', animate=True,
     animate_over : str, optional
         Dimension over which to animate
     x : str, optional
-        Dimension to use on the x axis, default is 'x'
+        Dimension to use on the x axis, default is None - then use the first spatial
+        dimension of the data
     y : str, optional
-        Dimension to use on the y axis, default is 'y'
+        Dimension to use on the y axis, default is None - then use the second spatial
+        dimension of the data
     vmin : float, optional
         Minimum value to use for colorbar. Default is to use minimum value of
         data across whole timeseries.
@@ -41,12 +43,30 @@ def animate_imshow(data, animate_over='t', x='x', y='y', animate=True,
     variable = data.name
 
     # Check plot is the right orientation
-    t_read, y_read, x_read = data.dims
-    if (x_read is x) & (y_read is y):
-        pass
-    elif (x_read is y) & (y_read is x):
+    spatial_dims = list(data.dims)
+
+    if len(data.dims) != 3:
+        raise ValueError('Data passed to animate_imshow must be 3-dimensional')
+
+    try:
+        spatial_dims.remove(animate_over)
+    except ValueError:
+        raise ValueError("Dimension animate_over={} is not present in the data"
+                         .format(animate_over))
+
+    try:
+        if x is None and y is None:
+            x, y = spatial_dims
+        elif x is None:
+            spatial_dims.remove(y)
+            x = spatial_dims[0]
+        elif y is None:
+            spatial_dims.remove(x)
+            y = spatial_dims[0]
+
+        # Use (y, x) here so we transpose by default for imshow
         data = data.transpose(animate_over, y, x)
-    else:
+    except ValueError:
         raise ValueError("Dimensions {} or {} are not present in the data"
                          .format(x, y))
 
