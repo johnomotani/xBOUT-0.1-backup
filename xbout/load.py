@@ -95,7 +95,7 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc',
 
     if gridfilepath:
         ds = open_grid(gridfilepath=gridfilepath, geometry=geometry,
-                       coordinates=None, ds=ds,
+                       coordinates=coordinates, ds=ds,
                        keep_xboundaries=keep_xboundaries,
                        keep_yboundaries=keep_yboundaries)
 
