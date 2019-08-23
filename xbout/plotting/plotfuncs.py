@@ -114,7 +114,8 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
             # put levels back into kwargs
             kwargs['levels'] = levels
         else:
-            levels = np.array(levels)
+            levels = np.array(list(levels))
+            kwargs['levels'] = levels
             vmin = np.min(levels)
             vmax = np.max(levels)
 
@@ -147,17 +148,11 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
             kwargs['infer_intervals'] = False
 
     regions = _decompose_regions(da)
-    region_kwargs = {}
 
     # Plot all regions on same axis
-    first, *rest = regions
-    artists = [method(first, x=x, y=y, ax=ax, add_colorbar=False, cmap=cmap, **kwargs,
-                      **region_kwargs)]
-    if rest:
-        for region in rest:
-            artist = method(region, x=x, y=y, ax=ax, add_colorbar=False,
-                            add_labels=False, cmap=cmap, **kwargs, **region_kwargs)
-            artists.append(artist)
+    add_labels = [True] + [False] * (len(regions) - 1)
+    artists = [method(region, x=x, y=y, ax=ax, add_colorbar=False, add_labels=add_label,
+        cmap=cmap, **kwargs) for region, add_label in zip(regions, add_labels)]
 
     ax.set_title(da.name)
 
