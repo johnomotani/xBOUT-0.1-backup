@@ -358,12 +358,9 @@ def create_bout_grid_ds(xsize=2, ysize=4, guards={}):
     ysize += 2*myg
     shape = (xsize, ysize)
 
-    data = np.ones(shape)
+    data = DataArray(np.ones(shape), dims=['x', 'y'])
 
-    psixy = DataArray(data, dims=['x', 'y'])
-    Rxy = DataArray(data, dims=['x', 'y'])
-    Zxy = DataArray(data, dims=['x', 'y'])
-    ds = Dataset({'psixy': psixy, 'Rxy': Rxy, 'Zxy': Zxy})
+    ds = Dataset({'psixy': data, 'Rxy': data, 'Zxy': data, 'hthe': data})
 
     return ds
 
