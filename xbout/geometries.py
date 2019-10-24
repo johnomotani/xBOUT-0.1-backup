@@ -161,6 +161,12 @@ def add_s_alpha_geometry_coords(ds, coordinates=None):
     if 'r' in ds:
         raise ValueError("Cannot have variable 'r' in dataset when using "
                          "geometry='s-alpha'")
+    if not 'hthe' in ds:
+        if ds._grid is None:
+            raise ValueError("Grid file is required to provide %s. Pass the grid "
+                             "file name as the 'gridfilepath' argument to "
+                             "open_boutdataset().")
+        ds['hthe'] = ds._grid['hthe']
     ds['r'] = ds['hthe'].isel({coordinates['y']: 0}).squeeze(drop=True)
     ds['r'].attrs['units'] = 'm'
     ds = ds.set_coords('r')
