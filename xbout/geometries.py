@@ -118,13 +118,10 @@ def add_toroidal_geometry_coords(ds, coordinates=None):
                                  "open_boutdataset().")
             ds[v] = ds._grid[v]
 
-    # Change names of dimensions to Orthogonal Toroidal ones
-    ds = ds.rename(y=coordinates['y'])
-
     # Add 1D Orthogonal Toroidal coordinates
-    ny = ds.dims[coordinates['y']]
+    ny = ds.dims['y']
     theta = xr.DataArray(np.linspace(start=0, stop=2 * np.pi, num=ny),
-                         dims=coordinates['y'])
+                         dims='y')
     ds = ds.assign_coords(**{coordinates['y']: theta})
 
     # TODO automatically make this coordinate 1D in simplified cases?
@@ -134,11 +131,10 @@ def add_toroidal_geometry_coords(ds, coordinates=None):
 
     # If full data (not just grid file) then toroidal dim will be present
     if 'z' in ds.dims:
-        ds = ds.rename(z=coordinates['z'])
-        nz = ds.dims[coordinates['z']]
-        phi = xr.DataArray(np.linspace(start=0, stop=2 * np.pi, num=nz),
-                           dims=coordinates['z'])
-        ds = ds.assign_coords(**{coordinates['z']: phi})
+        nz = ds.dims['z']
+        zeta = xr.DataArray(np.linspace(start=0, stop=2 * np.pi, num=nz),
+                            dims='z')
+        ds = ds.assign_coords(**{coordinates['z']: zeta})
 
     # Add 2D Cylindrical coordinates
     if ('R' not in ds) and ('Z' not in ds):
@@ -170,9 +166,8 @@ def add_s_alpha_geometry_coords(ds, coordinates=None):
     ds['r'] = ds['hthe'].isel({coordinates['y']: 0}).squeeze(drop=True)
     ds['r'].attrs['units'] = 'm'
     ds = ds.set_coords('r')
-    ds = ds.rename(x='r')
 
     # Simplify psi to be radially-varying only
-    ds['r'] = ds['r'].isel({coordinates['y']: 0}).squeeze(drop=True)
+    ds['r'] = ds['r'].isel(y=0).squeeze(drop=True)
 
     return ds
