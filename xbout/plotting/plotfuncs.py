@@ -107,7 +107,10 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
     if vmax is None:
         vmax = da.max().values
 
-    if method is xr.plot.contour or method is xr.plot.contourf:
+    # Need to create a colorscale that covers the range of values in the whole array.
+    # Using the add_colorbar argument would create a separate color scale for each
+    # separate region, which would not make sense.
+    if method is xr.plot.contourf:
         levels = kwargs.get('levels', 7)
         if isinstance(levels, np.int):
             levels = np.linspace(vmin, vmax, levels, endpoint=True)
@@ -123,7 +126,8 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
         sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
         # make colorbar have only discrete levels
-        # average the levels so that colors represent the intervals between the levels
+        # average the levels so that colors in the colorbar represent the intervals
+        # between the levels, as contourf colors filled regions between the given levels.
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
                 'discrete cmap', sm.to_rgba(0.5*(levels[:-1] + levels[1:])),
                 len(levels) - 1)
@@ -131,8 +135,29 @@ def plot2d_wrapper(da, method, *, ax=None, separatrix=True, targets=True,
         sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array([])
         fig.colorbar(sm, ticks=levels, ax=ax)
+    elif method is xr.plot.contour:
+        levels = kwargs.get('levels', 7)
+        if isinstance(levels, np.int):
+            levels = np.linspace(vmin, vmax, levels, endpoint=True)
+            # put levels back into kwargs
+            kwargs['levels'] = levels
+        else:
+            levels = np.array(list(levels))
+            kwargs['levels'] = levels
+            vmin = np.min(levels)
+            vmax = np.max(levels)
+
+        # create colorbar
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+        sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+        cmap = matplotlib.colors.ListedColormap(
+                sm.to_rgba(levels), name='discrete cmap')
+        # re-make sm with new cmap
+        sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+        sm.set_array([])
+        fig.colorbar(sm, ticks=levels, ax=ax)
     else:
-        # pass vmin and vmax through kwargs as they are not used for contour plots
+        # pass vmin and vmax through kwargs as they are not used for contourf plots
         kwargs['vmin'] = vmin
         kwargs['vmax'] = vmax
 
