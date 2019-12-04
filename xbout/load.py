@@ -122,6 +122,12 @@ def open_boutdataset(datapath='./BOUT.dmp.*.nc', inputfilepath=None,
         options = None
     ds = _set_attrs_on_all_vars(ds, 'options', options)
 
+    # Add some coordinates so we can find out the new names of the original x, y and z
+    # coordinates even if they are renamed and transposed arbitrarily.
+    ds = ds.assign_coords('xdim': ds['x'])
+    ds = ds.assign_coords('ydim': ds['y'])
+    ds = ds.assign_coords('zdim': ds['z'])
+
     if geometry is None:
         if geometry in ds.attrs:
             geometry = ds.attrs.get('geometry')
