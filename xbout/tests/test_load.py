@@ -391,6 +391,10 @@ class TestOpen:
         path = bout_xyt_example_files(tmpdir_factory, nxpe=1, nype=1, nt=1)
         actual = open_boutdataset(datapath=path, keep_xboundaries=False)
         expected = create_bout_ds()
+        expected = expected.assign_coords(xdim=expected['x'])
+        expected = expected.assign_coords(ydim=expected['y'])
+        expected = expected.assign_coords(zdim=expected['z'])
+
         xrt.assert_equal(actual.load(),
                          expected.drop(METADATA_VARS + _BOUT_PER_PROC_VARIABLES,
                                        errors='ignore'))
@@ -403,6 +407,9 @@ class TestOpen:
         bout_ds = create_bout_ds
         expected = concat([bout_ds(0), bout_ds(1), bout_ds(2), bout_ds(3)], dim='x',
                           data_vars='minimal')
+        expected = expected.assign_coords(xdim=expected['x'])
+        expected = expected.assign_coords(ydim=expected['y'])
+        expected = expected.assign_coords(zdim=expected['z'])
         xrt.assert_equal(actual.load(),
                          expected.drop(METADATA_VARS + _BOUT_PER_PROC_VARIABLES,
                                        errors='ignore'))
@@ -415,6 +422,9 @@ class TestOpen:
         bout_ds = create_bout_ds
         expected = concat([bout_ds(0), bout_ds(1), bout_ds(2)], dim='y',
                           data_vars='minimal')
+        expected = expected.assign_coords(xdim=expected['x'])
+        expected = expected.assign_coords(ydim=expected['y'])
+        expected = expected.assign_coords(zdim=expected['z'])
         xrt.assert_equal(actual.load(),
                          expected.drop(METADATA_VARS + _BOUT_PER_PROC_VARIABLES,
                                        errors='ignore'))
@@ -437,6 +447,9 @@ class TestOpen:
                        data_vars='minimal')
         expected = concat([line1, line2, line3], dim='y',
                           data_vars='minimal')
+        expected = expected.assign_coords(xdim=expected['x'])
+        expected = expected.assign_coords(ydim=expected['y'])
+        expected = expected.assign_coords(zdim=expected['z'])
         xrt.assert_equal(actual.load(),
                          expected.drop(METADATA_VARS + _BOUT_PER_PROC_VARIABLES,
                                        errors='ignore'))

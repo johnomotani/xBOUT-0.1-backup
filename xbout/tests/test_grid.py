@@ -36,7 +36,8 @@ class TestOpenGrid:
     def test_open_grid(self, create_example_grid_file):
         example_grid = create_example_grid_file
         result = open_boutdataset(datapath=example_grid)
-        assert_equal(result, open_dataset(example_grid))
+        assert_equal(result.reset_coords(['xdim', 'ydim'], drop=True),
+                     open_dataset(example_grid))
         result.close()
 
     def test_open_grid_extra_dims(self, create_example_grid_file, tmpdir_factory):
@@ -52,7 +53,7 @@ class TestOpenGrid:
         with pytest.warns(UserWarning, match="drop all variables containing "
                                              "the dimensions 'w'"):
             result = open_boutdataset(datapath=dodgy_grid_path)
-        assert_equal(result, example_grid)
+        assert_equal(result.reset_coords(['xdim', 'ydim'], drop=True), example_grid)
         result.close()
 
     def test_open_grid_apply_geometry(self, create_example_grid_file):
