@@ -52,6 +52,21 @@ class TestAnimate:
         assert animation.ax.get_xlabel() == 'x'
         assert animation.ax.get_ylabel() == 'y'
 
+    def test_animate2D_with_coords_and_dask(self, create_test_file):
+
+        save_dir, ds = create_test_file
+
+        import numpy as np
+        import xarray as xr
+        array = np.random.randint(0, 100, size=(3, 4, 5))
+        da = xr.DataArray(array, dims=('t','x','y'),
+                          coords={'t': [10, 20,30], 'x': [1, 2,3,4],
+                                  'y': [100, 200,300,400,500]})
+        dask_da = da.chunk(chunks={'t':3})
+        animation = dask_da.bout.animate2D(animate_over='t', x='x', y='y',
+                                           save_as="%s/test" % save_dir)
+        assert isinstance(animation, Imshow)
+
     def test_animate1D(self, create_test_file):
 
         save_dir, ds = create_test_file
